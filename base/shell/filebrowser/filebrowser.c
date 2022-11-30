@@ -1,11 +1,4 @@
-/*
- * ReactOS Explorer
- *
- * Copyright 2014 Giannis Adamopoulos
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
+* License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
  * This library is distributed in the hope that it will be useful,
@@ -32,11 +25,55 @@ int _tmain(int argc, _TCHAR* argv[])
     EXPLORER_CMDLINE_PARSE_RESULTS parseResults = { 0 };
 
     if (SHExplorerParseCmdLine(&parseResults))
+
+    {
+        IShellBrowser *psb;
+        IShellView *psv;
+        IShellFolder *psf;
+        LPITEMIDLIST pidl;
+        HRESULT hr;
+
+        hr = SHExplorerCreateShellBrowser(&psb);
+        if (SUCCEEDED(hr))
+        {
+            hr = SHExplorerCreateShellView(&parseResults, psb, &psv);
+            if (SUCCEEDED(hr))
+            {
+                hr = IShellView_QueryInterface(psv, &IID_IShellFolder, (void**)&psf);
+                if (SUCCEEDED(hr))
+                {
+                    hr = IShellFolder_ParseDisplayName(psf, NULL, NULL, parseResults.szPath, NULL, &pidl, NULL);
+                    if (SUCCEEDED(hr))
+                    {
+                        hr = IShellView_Initialize(psv, psf, pidl);
+                        if (SUCCEEDED(hr))
+                        {
+                            hr = IShellBrowser_BrowseObject(psb, pidl, SBSP_ABSOLUTE);
+                            if (SUCCEEDED(hr))
+                            {
+                                MSG msg;
+                                while (GetMessage(&msg, NULL, 0, 0))
+                                {
+                                    TranslateMessage(&msg);
+                                    DispatchMessage(&msg);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    
     {
         parseResults.dwFlags |= SH_EXPLORER_CMDLINE_FLAG_SEPARATE;
         parseResults.nCmdShow = SW_SHOWNORMAL;
         return SHCreateFromDesktop(&parseResults);
     }
+
+    return 1;
+}
 
     if (parseResults.strPath)
         SHFree(parseResults.strPath);
